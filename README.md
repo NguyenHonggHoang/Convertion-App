@@ -37,8 +37,6 @@ project-root/
 ├── docker-compose.override.yml
 ├── package.json
 ├── README.md
-├── UPGRADE_SUMMARY.md
-├── .env.sample
 ├── backend/                               # Spring Boot backend
 │   ├── Dockerfile
 │   ├── mvnw, mvnw.cmd, pom.xml
@@ -249,7 +247,6 @@ python app.py
 ### News Analysis
 
 - `GET /api/news` - Lấy danh sách tin tức
-- `POST /api/alerts` - Tạo cảnh báo
 
 ## Cấu hình
 
@@ -291,7 +288,7 @@ Ghi chú:
 - `JWT_PRIVATE_KEYS` cho phép nhiều key theo định dạng `kid::BASE64_PKCS8` ngăn cách bằng `|`.
 - Khóa phải ở định dạng PKCS#8 và được Base64-encode không xuống dòng.
 
-## Tính năng AI/ML
+## Tính năng 
 
 ### Dự đoán tỷ giá
 
@@ -304,12 +301,6 @@ Ghi chú:
 - Sử dụng FinBERT để phân tích cảm xúc
 - Phân loại tin tức theo chủ đề
 - Tóm tắt tin tức tự động
-
-### Hệ thống cảnh báo thông minh
-
-- Cảnh báo dựa trên tỷ giá và xu hướng
-- Tích hợp phân tích tin tức
-- Gửi thông báo qua email
 
 ## Testing
 
@@ -330,7 +321,6 @@ npm test
 ### Integration Tests
 
 ```bash
-# Chạy toàn bộ hệ thống
 docker compose up -d
 
 # Chạy tests
@@ -400,10 +390,3 @@ docker compose up -d
 4. Push to branch
 5. Tạo Pull Request
 
-## License
-
-MIT License
-
-## Support
-
-Nếu gặp vấn đề, vui lòng tạo issue trên GitHub repository.

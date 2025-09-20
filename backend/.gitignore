@@ -1,0 +1,24 @@
+# Build output
+/target/
+
+# IDE
+/.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets and keys
+/key/
+/src/main/resources/keys/
+*.pem
+*.key
+*.crt
+*.cer
+.env
+.env.*
+
+# Logs
+*.log
+

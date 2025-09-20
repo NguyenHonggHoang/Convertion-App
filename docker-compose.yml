@@ -1,0 +1,222 @@
+
+
+x-common-dns: &common-dns
+  - 1.1.1.1
+  - 8.8.8.8
+  - 9.9.9.9
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: converter-postgres
+    environment:
+      POSTGRES_DB: converter_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d converter_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: converter-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: converter-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/converter_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ""
+      SPRING_DATA_REDIS_DATABASE: 0
+      SPRING_PROFILES_ACTIVE: docker
+      SECURITY_INTERNAL_AUTH_ENABLED: "true"
+      SECURITY_INTERNAL_BOOTSTRAP_ENABLED: "true"
+      SECURITY_INTERNAL_APIKEY_HEADER: X-API-Key
+      MICROSERVICE_PREDICT_URL: http://predict-service:5001/predict
+      MICROSERVICE_SENTIMENT_URL: http://sentiment-service:5002/sentiment  
+      MICROSERVICE_CRAWL_URL: http://crawl-service:5003/crawl
+      MICROSERVICE_NLP_URL: http://nlp-service:5004
+      MICROSERVICE_ADVANCED_NLP_URL: http://nlp-service:5004
+      JWKS_URL: http://backend:8080/.well-known/jwks.json
+      JWT_ISS: converter-backend
+      JWT_AUD: converter-api
+      JWT_JWKS_URI: http://backend:8080/.well-known/jwks.json
+      JWT_JWKS_REFRESH: 300
+      JWT_LEEWAY_SECONDS: 30
+      JWT_ACCESS_TTL: 900
+      # From .env or override
+      JWT_ACTIVE_KID: "${JWT_ACTIVE_KID:-dev-1}"
+      JWT_PRIVATE_KEYS: "${JWT_PRIVATE_KEYS:-}"
+      JWT_REFRESH_TTL: "${JWT_REFRESH_TTL:-2592000}"
+      JWT_ISSUERS: auth-service,converter-backend
+      JWT_AUDIENCES: converter-backend,converter-api
+      # Cookies
+      APP_COOKIE_SECURE: "false"
+      APP_COOKIE_SAMESITE: Lax
+      # External currency API
+      EXTERNAL_CURRENCY_API_URL: https://v6.exchangerate-api.com/v6/
+      EXTERNAL_CURRENCY_API_KEY: 352e86ed377365a97f759e4a
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      predict-service:
+        condition: service_healthy
+      sentiment-service:
+        condition: service_healthy
+      crawl-service:
+        condition: service_healthy
+      nlp-service:
+        condition: service_healthy
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:8080
+    container_name: converter-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+  predict-service:
+    build:
+      context: ./microservices/predict-service
+    container_name: converter-predict-service
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/converter_db
+      HISTORY_SOURCE_URL: http://backend:8080/api/exchange/history?base={base}&quote={quote}&limit=180
+      BACKEND_URL: http://backend:8080
+      TOKEN_DURATION_MINUTES: "60"
+      TOKEN_REFRESH_THRESHOLD_MINUTES: "10"
+      # Prediction tuning envs
+      PRED_CACHE_TTL: "300"
+      FILL_MISSING_DAYS: "false"
+      MAD_K: "6.0"
+      USE_LOG_VOL_THRESHOLD: "0.12"
+      SOFT_CLAMP_PCT: "0.005"
+      SENTI_CLAMP_GAIN: "0.1"
+      MIN_SOFT_CLAMP_PCT: "0.005"
+      MAX_SOFT_CLAMP_PCT: "0.10"
+      HOLT_ALPHA: "0.30"
+      HOLT_BETA: "0.20"
+      HOLT_DAMPING: "0.92"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:5001/health', timeout=3).getcode()==200 else sys.exit(1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+  sentiment-service:
+    build:
+      context: ./microservices/sentiment-service
+    container_name: converter-sentiment-service
+    ports:
+      - "5002:5002"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/converter_db
+      MAX_CONTENT_LENGTH: "2097152"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:5002/health', timeout=3).getcode()==200 else sys.exit(1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+  crawl-service:
+    build:
+      context: ./microservices/crawl-service
+      dockerfile: Dockerfile
+    container_name: converter-crawl-service
+    ports:
+      - "5003:5003"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/converter_db
+      NLP_SERVICE_URL: http://nlp-service:5004
+      SENTIMENT_SERVICE_URL: http://sentiment-service:5002
+      PREDICT_SERVICE_URL: http://predict-service:5001
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://frontend:3000
+      FETCH_WORKERS: "32"
+      CRAWL_META_TTL: "180"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:5003/health', timeout=4).getcode()==200 else sys.exit(1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+  nlp-service:
+    build:
+      context: ./microservices/nlp-service
+      dockerfile: Dockerfile
+    container_name: converter-nlp-service
+    ports:
+      - "5004:5004"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:5004/health', timeout=3).getcode()==200 else sys.exit(1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - converter-network
+    dns: *common-dns
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  converter-network:
+    driver: bridge

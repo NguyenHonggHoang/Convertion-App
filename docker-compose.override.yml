@@ -1,0 +1,25 @@
+services:
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports: ["9090:9090"]
+    networks: [converter-network]
+  grafana:
+    image: grafana/grafana
+    ports: ["3002:3000"]
+    networks: [converter-network]
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning
+      - ./ops/grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/converter-backend.json
+
+  backend:
+    environment:
+      - JWT_ISS=converter-backend
+      - JWT_AUD=converter-api
+      - JWT_JWKS_URI=http://backend:8080/.well-known/jwks.json
+      - JWT_ISSUERS=auth-service,converter-backend
+      - JWT_AUDIENCES=converter-backend,converter-api

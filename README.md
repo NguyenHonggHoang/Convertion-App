@@ -1,10 +1,11 @@
-# Converter Application
+# Convertion-App
 
 Ứng dụng web hoàn chỉnh bao gồm backend (Spring Boot), frontend (React.js), và các microservices (Flask) để hỗ trợ chuyển đổi đơn vị, chuyển đổi tiền tệ, quản lý người dùng, phân tích tin tức kinh tế, và cảnh báo tỷ giá.
 
 ## Tính năng chính
 
 ### Backend (Spring Boot)
+
 - **Chuyển đổi đơn vị**: Hỗ trợ chuyển đổi giữa các đơn vị đo lường khác nhau
 - **Chuyển đổi tiền tệ**: Chuyển đổi tiền tệ với tỷ giá real-time và dự đoán
 - **Quản lý người dùng**: Đăng ký, đăng nhập, quản lý hồ sơ với JWT
@@ -14,6 +15,7 @@
 - **PostgreSQL**: Lưu trữ dữ liệu người dùng, lịch sử chuyển đổi, tin tức
 
 ### Frontend (React.js)
+
 - **Giao diện người dùng hiện đại**: Sử dụng Material-UI
 - **Chuyển đổi đơn vị**: Hỗ trợ nhận diện giọng nói
 - **Chuyển đổi tiền tệ**: Biểu đồ dự đoán và khuyến nghị thông minh
@@ -21,13 +23,15 @@
 - **Quản lý người dùng**: Đăng ký, đăng nhập, cập nhật hồ sơ
 
 ### Microservices (Flask)
+
 - **Predict Service**: Dự đoán tỷ giá sử dụng AI/ML
 - **Sentiment Service**: Phân tích cảm xúc tin tức
 - **Crawl Service**: Thu thập tin tức từ các nguồn khác nhau
+- **NLP Service**: Mô hình NLP nâng cao (FinBERT, phân tích ngôn ngữ)
 
 ## Cấu trúc dự án
 
-```
+```text
 project-root/
 ├── backend/                       # Spring Boot backend
 │   ├── src/
@@ -81,34 +85,45 @@ project-root/
 ### Sử dụng Docker Compose (Khuyến nghị)
 
 1. **Clone repository**:
+
    ```bash
-   git clone <repository-url>
-   cd converter-application
+   git clone https://github.com/NguyenHonggHoang/Convertion-App.git
+   cd Convertion-App
    ```
 
-2. **Chạy toàn bộ hệ thống**:
+2. **Chuẩn bị biến môi trường (.env)**:
+   - Sao chép file `.env.sample` thành `.env` và điền các biến JWT cần thiết.
+   - Lưu ý: Giá trị `JWT_PRIVATE_KEYS` phải ở trên 1 dòng, định dạng:
+     - `kid::BASE64_PKCS8[|kid2::BASE64_PKCS8|...]`
+     - Ví dụ: `dev-1::MIIEvAIBADANBgkqhkiG9w0B...`
+
+3. **Chạy toàn bộ hệ thống** (Docker Compose v2):
+
    ```bash
-   docker-compose up -d
+   docker compose up -d --build
    ```
 
-3. **Truy cập ứng dụng**:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8080
-   - Swagger UI: http://localhost:8080/swagger-ui.html
+4. **Truy cập ứng dụng**:
+   - Frontend: <http://localhost:3000>
+   - Backend API: <http://localhost:8080>
+   - Swagger UI: <http://localhost:8080/swagger-ui.html>
    - Microservices:
-     - Predict Service: http://localhost:5001
-     - Sentiment Service: http://localhost:5002
-     - Crawl Service: http://localhost:5003
+      - Predict Service: <http://localhost:5001>
+      - Sentiment Service: <http://localhost:5002>
+      - Crawl Service: <http://localhost:5003>
+      - NLP Service: <http://localhost:5004>
 
 ### Development Mode
 
 #### Backend
+
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
 
 #### Frontend
+
 ```bash
 cd frontend
 npm install
@@ -116,6 +131,7 @@ npm start
 ```
 
 #### Microservices
+
 ```bash
 # Predict Service
 cd microservices/predict-service
@@ -131,42 +147,56 @@ python app.py
 cd microservices/crawl-service
 pip install -r requirements.txt
 python app.py
+
+# NLP Service
+cd microservices/nlp-service
+pip install -r requirements.txt
+python app.py
 ```
 
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/register` - Đăng ký người dùng
 - `POST /api/auth/login` - Đăng nhập
 
 ### User Management
+
 - `GET /api/users/me` - Lấy thông tin hồ sơ
 - `PUT /api/users/me` - Cập nhật hồ sơ
 
 ### Unit Conversion
+
 - `POST /api/convert/unit` - Chuyển đổi đơn vị
 
 ### Currency Conversion
+
 - `POST /api/convert/currency` - Chuyển đổi tiền tệ
 
 ### News Analysis
+
 - `GET /api/news` - Lấy danh sách tin tức
 - `POST /api/alerts` - Tạo cảnh báo
 
 ## Cấu hình
 
 ### Database
+
 - PostgreSQL: `localhost:5432`
 - Database: `converter_db`
 - Username: `postgres`
 - Password: `password`
 
 ### Redis Cache
+
 - Host: `localhost`
 - Port: `6379`
 
 ### Email Configuration
+
 Cập nhật cấu hình email trong `backend/src/main/resources/application.properties`:
+
 ```properties
 spring.mail.host=smtp.gmail.com
 spring.mail.username=your-email@gmail.com
@@ -174,24 +204,37 @@ spring.mail.password=your-app-password
 ```
 
 ### JWT Configuration
-Cập nhật JWT secret trong `backend/src/main/resources/application.properties`:
+
+Hệ thống sử dụng RS256 JWT với JWKS. Không cần chỉnh sửa file properties; cấu hình JWT thông qua biến môi trường (khuyến nghị dùng `.env` + Docker Compose):
+
 ```properties
-jwt.secret=your-secret-key-here-make-it-long-and-secure
+# .env (ví dụ)
+JWT_ACTIVE_KID=dev-1
+JWT_PRIVATE_KEYS=dev-1::<BASE64_PKCS8_PRIVATE_KEY>
+JWT_REFRESH_TTL=2592000
 ```
+
+Ghi chú:
+
+- `JWT_PRIVATE_KEYS` cho phép nhiều key theo định dạng `kid::BASE64_PKCS8` ngăn cách bằng `|`.
+- Khóa phải ở định dạng PKCS#8 và được Base64-encode không xuống dòng.
 
 ## Tính năng AI/ML
 
 ### Dự đoán tỷ giá
+
 - Sử dụng Prophet library để dự đoán tỷ giá
 - Phân tích xu hướng thị trường
 - Khuyến nghị thời điểm tối ưu để chuyển tiền
 
 ### Phân tích cảm xúc tin tức
+
 - Sử dụng FinBERT để phân tích cảm xúc
 - Phân loại tin tức theo chủ đề
 - Tóm tắt tin tức tự động
 
 ### Hệ thống cảnh báo thông minh
+
 - Cảnh báo dựa trên tỷ giá và xu hướng
 - Tích hợp phân tích tin tức
 - Gửi thông báo qua email
@@ -199,21 +242,24 @@ jwt.secret=your-secret-key-here-make-it-long-and-secure
 ## Testing
 
 ### Backend Tests
+
 ```bash
 cd backend
 ./mvnw test
 ```
 
 ### Frontend Tests
+
 ```bash
 cd frontend
 npm test
 ```
 
 ### Integration Tests
+
 ```bash
 # Chạy toàn bộ hệ thống
-docker-compose up -d
+docker compose up -d
 
 # Chạy tests
 ./run-integration-tests.sh
@@ -222,19 +268,21 @@ docker-compose up -d
 ## Monitoring
 
 ### Health Checks
-- Backend: http://localhost:8080/actuator/health
-- Predict Service: http://localhost:5001/health
-- Sentiment Service: http://localhost:5002/health
-- Crawl Service: http://localhost:5003/health
+
+- Backend: <http://localhost:8080/actuator/health>
+- Predict Service: <http://localhost:5001/health>
+- Sentiment Service: <http://localhost:5002/health>
+- Crawl Service: <http://localhost:5003/health>
 
 ### Logs
+
 ```bash
 # Xem logs của tất cả services
-docker-compose logs -f
+docker compose logs -f
 
 # Xem logs của service cụ thể
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ## Troubleshooting
@@ -268,8 +316,8 @@ This avoids errors like "Connection refused: localhost:5003" when microservices 
 ### Reset Database
 
 ```bash
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ## Contributing

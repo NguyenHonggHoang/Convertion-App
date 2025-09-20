@@ -33,44 +33,116 @@
 
 ```text
 project-root/
-├── backend/                       # Spring Boot backend
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/example/converter/
-│   │   │   │   ├── controller/    # REST Controllers
-│   │   │   │   ├── service/       # Business Logic
-│   │   │   │   ├── repository/    # Data Access
-│   │   │   │   ├── entity/        # JPA Entities
-│   │   │   │   ├── dto/          # Data Transfer Objects
-│   │   │   │   ├── config/       # Configuration
-│   │   │   │   └── security/     # JWT Security
-│   │   │   └── resources/
-│   │   └── test/
-│   ├── pom.xml
-│   └── Dockerfile
-├── frontend/                      # React.js frontend
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   └── utils/
+├── docker-compose.yml
+├── docker-compose.override.yml
+├── package.json
+├── README.md
+├── UPGRADE_SUMMARY.md
+├── .env.sample
+├── backend/                               # Spring Boot backend
+│   ├── Dockerfile
+│   ├── mvnw, mvnw.cmd, pom.xml
+│   └── src/
+│       ├── main/
+│       │   ├── java/com/example/converter/
+│       │   │   ├── ConverterApplication.java
+│       │   │   ├── config/
+│       │   │   ├── controller/
+│       │   │   ├── domain/
+│       │   │   ├── dto/
+│       │   │   ├── entity/
+│       │   │   ├── maintenance/
+│       │   │   ├── repository/
+│       │   │   ├── security/
+│       │   │   ├── service/
+│       │   │   └── web/
+│       │   └── resources/
+│       │       ├── application.properties
+│       │       ├── application.yml
+│       │       ├── db/migration/
+│       │       │   ├── V6__user_roles.sql
+│       │       │   └── V9__security_audit.sql
+│       │       └── keys/
+│       │           ├── private_key_pkcs8.pem
+│       │           ├── private_key.pem
+│       │           └── public_key.pem
+│       └── test/
+│           └── java/com/example/converter/
+│               ├── ConversionServiceTest.java
+│               └── ExchangeRateServiceTest.java
+├── frontend/                              # React frontend
+│   ├── Dockerfile
 │   ├── package.json
-│   └── Dockerfile
-├── microservices/                 # Flask microservices
+│   ├── public/
+│   │   └── index.html
+│   └── src/
+│       ├── App.js
+│       ├── index.js
+│       ├── theme.tsx
+│       ├── api/
+│       │   ├── conversions.ts
+│       │   └── rates.ts
+│       ├── auth/
+│       │   ├── apiClient.ts
+│       │   ├── device.ts
+│       │   ├── ProtectedRoute.tsx
+│       │   └── roles.ts
+│       ├── components/
+│       │   ├── AdvancedCurrencyConversionComponent.js
+│       │   ├── Captcha.tsx
+│       │   ├── CurrencyConversionComponent.js
+│       │   ├── CurrencyConversionComponent_new.js
+│       │   ├── Navigation.js
+│       │   ├── NewsAnalysisComponent.js
+│       │   ├── UnitConversionComponent.js
+│       │   └── UserManagementComponent.js
+│       ├── layout/
+│       │   └── AppShell.tsx
+│       ├── pages/
+│       │   ├── ChangePasswordPage.tsx
+│       │   ├── ConversionHistoryPage.tsx
+│       │   ├── ExchangeRatesPage.tsx
+│       │   ├── ForgotPage.tsx
+│       │   └── ResetPage.tsx
+│       ├── services/
+│       │   └── api.js
+│       └── utils/
+│           └── config.js
+├── microservices/                         # Flask microservices
+│   ├── advanced-nlp-service/
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   ├── advanced-predict-service/
+│   │   ├── app.py
+│   │   ├── direct_test.py
+│   │   ├── Dockerfile
+│   │   ├── high_volatility_test.py
+│   │   └── requirements.txt
+│   ├── crawl-service/
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   ├── nlp-service/
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
 │   ├── predict-service/
 │   │   ├── app.py
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
-│   ├── sentiment-service/
-│   │   ├── app.py
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
-│   └── crawl-service/
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── sentiment-service/
 │       ├── app.py
-│       ├── requirements.txt
-│       └── Dockerfile
-├── docker-compose.yml
-└── README.md
+│       ├── Dockerfile
+│       └── requirements.txt
+└── ops/
+   ├── prometheus.yml
+   └── grafana/
+      └── provisioning/
+         ├── dashboards/
+         │   └── converter-backend.json
+         └── datasources/
+            └── datasource.yml
 ```
 
 ## Yêu cầu hệ thống

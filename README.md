@@ -18,13 +18,12 @@
 
 - **Giao diện người dùng hiện đại**: Sử dụng Material-UI
 - **Chuyển đổi đơn vị**: Hỗ trợ nhận diện giọng nói
-- **Chuyển đổi tiền tệ**: Biểu đồ dự đoán và khuyến nghị thông minh
 - **Phân tích tin tức**: Hiển thị tin tức với phân tích cảm xúc
 - **Quản lý người dùng**: Đăng ký, đăng nhập, cập nhật hồ sơ
 
 ### Microservices (Flask)
 
-- **Predict Service**: Dự đoán tỷ giá sử dụng AI/ML
+- **Predict Service**: Dự đoán tỷ giá sử dụng Sentiment Score(Có thể sai, không nên tin tưởng 100%)
 - **Sentiment Service**: Phân tích cảm xúc tin tức
 - **Crawl Service**: Thu thập tin tức từ các nguồn khác nhau
 - **NLP Service**: Mô hình NLP nâng cao (FinBERT, phân tích ngôn ngữ)

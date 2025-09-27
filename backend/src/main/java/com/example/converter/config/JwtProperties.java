@@ -19,6 +19,6 @@ public class JwtProperties {
     private int jwksRefreshSeconds = 300;
 
     private int leewaySeconds = 30;
-    private List<String> issuers = List.of("auth-service", "converter-backend");
-    private List<String> audiences = List.of("converter-backend", "converter-api");
+//    private List<String> issuers = List.of("auth-service", "converter-backend");
+//    private List<String> audiences = List.of("converter-backend", "converter-api");
 }

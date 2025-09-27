@@ -92,7 +92,6 @@ public class CurrencyConversionService {
 
             List<Map<String, Object>> predictionData = getPredictionData(request.getFromCurrency(), request.getToCurrency());
 
-            double sentimentAdj = getRecentSentimentAdjustment();
 
             log.info("Successfully converted {} {} to {} {}", 
                     request.getAmount(), request.getFromCurrency(), convertedAmount, request.getToCurrency());
@@ -140,23 +139,6 @@ public class CurrencyConversionService {
         return List.of();
     }
 
-    /**
-     * Get recent sentiment adjustment based on news articles
-     * @return sentiment adjustment value
-     */
-
-    private double getRecentSentimentAdjustment() {
-        try {
-            var latest = newsArticleRepository.findTop10ByOrderByPublishedAtDesc();
-            if (latest == null || latest.isEmpty()) return 0.0;
-            double avg = latest.stream()
-                    .map(n -> n.getSentimentScore() == null ? 0.0 : n.getSentimentScore())
-                    .mapToDouble(Double::doubleValue).average().orElse(0.0);
-            return (avg - 0.33) * 0.03;
-        } catch (Exception e) {
-            return 0.0;
-        }
-    }
 
     /**
      * Get user ID by username

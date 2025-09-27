@@ -11,10 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-/**
- * Internal controller for service-to-service operations like token generation.
- * This endpoint should only be accessible internally within the Docker network.
- */
 @RestController
 @RequestMapping("/api/internal")
 @RequiredArgsConstructor
@@ -26,10 +22,6 @@ public class InternalController {
     @Value("${security.internal.bootstrap.enabled:true}")
     private boolean bootstrapEnabled;
 
-    /**
-     * Generate internal API key for microservices
-     * This endpoint allows services to obtain signed tokens for API access
-     */
     @PostMapping("/token")
     public ResponseEntity<?> generateInternalToken(
         @RequestParam String serviceName,
@@ -37,7 +29,6 @@ public class InternalController {
         HttpServletRequest request
     ) {
         try {
-            // Basic security - only allow from internal network
             String remoteAddr = request.getRemoteAddr();
             if (!isInternalRequest(remoteAddr)) {
                 log.warn("Token generation attempt from external address: {}", remoteAddr);
@@ -55,8 +46,7 @@ public class InternalController {
             String token = internalApiKeyService.generateInternalApiKey(serviceName, durationMinutes);
             
             log.info("Generated internal API token for service: {} (duration: {} minutes)", serviceName, durationMinutes);
-            
-            // Get expiration time safely
+
             LocalDateTime expirationTime = null;
             try {
                 expirationTime = internalApiKeyService.getTokenExpiration(token);
@@ -104,17 +94,13 @@ public class InternalController {
         }
     }
 
-    /**
-     * Check if request comes from internal network (Docker network or localhost)
-     */
     private boolean isInternalRequest(String remoteAddr) {
         if (remoteAddr == null) return false;
-        
-        // Allow localhost and Docker internal networks
+
         return remoteAddr.equals("127.0.0.1") || 
                remoteAddr.equals("::1") || 
                remoteAddr.equals("0:0:0:0:0:0:0:1") ||
-               remoteAddr.startsWith("172.") || // Docker default networks
+               remoteAddr.startsWith("172.") ||
                remoteAddr.startsWith("192.168.") ||
                remoteAddr.startsWith("10.") ||
                remoteAddr.equals("::ffff:127.0.0.1");

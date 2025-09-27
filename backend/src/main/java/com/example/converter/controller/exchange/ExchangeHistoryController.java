@@ -48,7 +48,6 @@ public class ExchangeHistoryController {
         @RequestParam(required=false) @Min(1) @Max(365) Integer limit,
         HttpServletRequest req
     ) {
-        // PEM-based internal API authentication
         if (internalAuthEnabled) {
             String authHeader = req.getHeader(apiKeyHeader);
             

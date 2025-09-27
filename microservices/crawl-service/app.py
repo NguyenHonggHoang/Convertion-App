@@ -483,14 +483,12 @@ def enrich_articles_batch(articles: List[dict]) -> List[dict]:
         return []
     nlp_out = call_nlp_batch(articles, batch_size=int(os.getenv("NLP_BATCH", "100")))
     
-    # Tạo text phong phú hơn cho sentiment analysis
     texts = []
     for a in articles:
         title = a.get('title', '').strip()
         content = a.get('content', '').strip()
         description = a.get('description', '').strip()
         
-        # Kết hợp title + content + description để có text đầy đủ nhất
         combined_parts = [title, content, description]
         combined_text = '. '.join([part for part in combined_parts if part and len(part) > 10])
         
@@ -564,9 +562,7 @@ def conditional_response(req, etag_value, last_modified_iso):
             return resp
     return None
 
-# ---------------------------
-# Predict (v2: có điều chỉnh sentiment)
-# ---------------------------
+
 def call_predict_v2(base_currency, target_currency, horizon_days=7, sentiment_adjust=None):
     try:
         payload = {
@@ -622,7 +618,6 @@ def crawl_endpoint():
         quote = request.args.get("quote")
         groups_param = request.args.get("groups")
 
-        # Short-circuit 304 trước khi crawl
         key = _meta_key(window_hours, limit, groups_param, base, quote)
         sc = try_short_circuit_304(request, key)
         if sc:
@@ -638,7 +633,7 @@ def crawl_endpoint():
         # 2) Enrich batch (NLP + Sentiment)
         processed = enrich_articles_batch(articles)
 
-        # 3) Lọc theo base/quote (ưu tiên cặp từ NLP)
+        # 3) Lọc theo base/quote 
         if base and quote:
             B, Q = base.upper(), quote.upper()
             def has_pair(a):
@@ -656,14 +651,14 @@ def crawl_endpoint():
         saved = persist_articles(processed)
         log.info("Processed=%s, persisted=%s", len(processed), saved)
 
-        # 5) Predict (non-blocking) với sentiment điều chỉnh (trung bình, kẹp ±0.2)
+        # 5) Predict 
         if base and quote:
             if processed:
                 avg_senti = sum(a.get("sentiment_score", 0.0) for a in processed) / len(processed)
                 adj = max(-0.2, min(0.2, float(avg_senti)))
             else:
                 adj = 0.0
-            call_predict_v2(base_currency=base, target_currency=quote, horizon_days=7, sentiment_adjust=adj)
+            call_predict_v2(base_currency=base, target_currency=quote, horizon_days=2, sentiment_adjust=adj)
 
         # 6) Payload
         payload = {

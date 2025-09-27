@@ -1,4 +1,3 @@
-# auth_client.py - Internal API token management for microservices
 import os
 import time
 import logging
@@ -47,7 +46,6 @@ class InternalApiTokenClient:
         if not self._token or not self._token_expires_at:
             return False
             
-        # Check if token expires within refresh threshold
         refresh_time = datetime.now() + timedelta(minutes=self.refresh_threshold_minutes)
         return self._token_expires_at > refresh_time
     
@@ -75,18 +73,14 @@ class InternalApiTokenClient:
             result = response.json()
             self._token = result["token"]
             
-            # Parse expiration from JWT token
             try:
-                # Decode without verification to get expiration
                 decoded = jwt.decode(self._token, options={"verify_signature": False})
                 exp_timestamp = decoded.get("exp")
                 if exp_timestamp:
                     self._token_expires_at = datetime.fromtimestamp(exp_timestamp)
                 else:
-                    # Fallback: calculate based on duration
                     self._token_expires_at = datetime.now() + timedelta(minutes=self.token_duration_minutes)
             except:
-                # Fallback expiration calculation
                 self._token_expires_at = datetime.now() + timedelta(minutes=self.token_duration_minutes)
                 
             logger.info(f"Retrieved new internal API token for {self.service_name}, expires at {self._token_expires_at}")
@@ -132,7 +126,6 @@ class InternalApiTokenClient:
             logger.warning(f"No valid token available for {self.service_name}")
             return {}
 
-# Global instance for predict-service
 predict_service_auth = InternalApiTokenClient("predict-service")
 
 def get_internal_api_headers():

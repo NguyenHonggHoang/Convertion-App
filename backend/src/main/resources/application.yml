@@ -1,12 +1,15 @@
 server:
+  forward-headers-strategy: framework
+  tomcat:
+    remote-ip-header: x-forwarded-for
+    remote-ip-protocol-header: x-forwarded-proto
+    remote-ip-internal-proxies: 10\\..*|192\\.168\\..*|172\\.(1[6-9]|2\\d|3[0-1])\\..*|127\\.0\\.0\\.1
   port: 8080
 
 spring:
   application:
     name: converter
-  # Database and Flyway
   datasource:
-    # Support both SPRING_DATASOURCE_URL and legacy DATABASE_URL
     url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5433/converter_db}}
     username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USER:postgres}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:password}}
@@ -14,7 +17,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none  # Để Flyway quản lý schema
+      ddl-auto: none
     show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
@@ -22,12 +25,11 @@ spring:
         format_sql: true
 
   flyway:
-    baseline-on-migrate: true  # Tự động tạo baseline nếu schema không rỗng
-    baseline-version: 0        # Version cho baseline
+    baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
     enabled: true
 
-  # Redis configuration
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
@@ -41,7 +43,6 @@ spring:
           max-idle: 8
           min-idle: 0
 
-  # Mail (use env; no secrets in repo)
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${SPRING_MAIL_PORT:587}
@@ -60,7 +61,7 @@ spring:
     caffeine:
       spec: ${SPRING_CACHE_CAFFEINE_SPEC:maximumSize=1000,expireAfterWrite=10m}
 
-# Security configuration (merged all security sections)
+# Security configuration
 security:
   jwks:
     url: ${JWKS_URL:http://backend:8080/.well-known/jwks.json}
@@ -90,12 +91,12 @@ app:
   security:
     login:
       rate:
-        softAttempts: 5        # Ngưỡng mềm: số lần trong softWindowSec trước khi yêu cầu captcha
-        softWindowSec: 600     # 10 phút
-        hardAttempts: 10       # Ngưỡng cứng: quá ngưỡng trả 429 + tạm khoá
-        hardWindowSec: 600     # 10 phút
-        lockoutSec: 900        # Khoá 15 phút
-        ipLimitPerMin: 60      # Tối đa mỗi IP 60 req/phút
+        softAttempts: 5
+        softWindowSec: 600
+        hardAttempts: 10
+        hardWindowSec: 600
+        lockoutSec: 900
+        ipLimitPerMin: 60
   captcha:
     dev-bypass: ${APP_CAPTCHA_DEV_BYPASS:false}
     min-score: ${APP_CAPTCHA_MIN_SCORE:0.5}
@@ -134,7 +135,7 @@ springdoc:
     path: /swagger-ui.html
     operationsSorter: method
 
-# Logging (default to INFO; override in profiles)
+# Logging
 logging:
   level:
     com.example.converter: ${LOG_LEVEL_APP:INFO}
@@ -155,3 +156,4 @@ management:
   health:
     mail:
       enabled: false
+

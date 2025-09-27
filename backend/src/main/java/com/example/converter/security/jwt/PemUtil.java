@@ -83,7 +83,6 @@ public class PemUtil {
                     log.info("Parsed private key for kid: {}", kid);
                 } catch (Exception e) {
                     log.error("Failed to parse private key for kid: {}, skipping", kid, e);
-                    // Skip invalid keys thay vì throw exception
                 }
             }
         }

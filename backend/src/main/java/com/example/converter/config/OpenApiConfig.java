@@ -19,7 +19,6 @@ public class OpenApiConfig {
         .description("API documentation for Currency & Unit Conversion Service")
         .contact(new Contact()
           .name("Backend Team")
-          .email("backend@converter.com")
         )
       );
   }

@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-// bổ sung import cho logout
 import com.example.converter.security.jwt.JwtIssuerService;
 import com.example.converter.security.jwt.TokenBlacklistService;
 import com.example.converter.domain.service.RefreshTokenService;
@@ -29,7 +28,7 @@ import com.example.converter.domain.service.RefreshTokenService;
 /**
  * Spring Boot REST Controller for user management functionality.
  * Endpoints: /api/auth/register (POST), /api/auth/login (POST), /api/users/me (GET), /api/users/me (PUT).
- * Uses UserService to handle business logic.
+ * Uses UserService.
  * Ensures endpoints /api/users/** are protected by JWT.
  * Includes Swagger annotations.
  */
@@ -52,17 +51,15 @@ public class UserController {
     public ResponseEntity<?> registerUser(@Valid @RequestBody UserRegistrationRequest request,
                                           HttpServletRequest httpRequest,
                                           HttpServletResponse httpResponse) {
-        String clientIP = getClientIP(httpRequest);
+        String clientIP = httpRequest.getRemoteAddr();
         log.info("Registration attempt for user: {} from IP: {}", request.getUsername(), clientIP);
 
         try {
-            // Check if reCAPTCHA is required
             boolean captchaRequired = rateLimitService.isCaptchaRequiredForRegistration(clientIP);
 
             if (captchaRequired) {
                 log.info("reCAPTCHA required for registration from IP: {}", clientIP);
 
-                // Verify reCAPTCHA if provided
                 if (request.getCaptchaToken() == null || request.getCaptchaToken().isBlank()) {
                     return ResponseEntity.status(429).body(Map.of(
                             "error", "captcha_required",
@@ -85,7 +82,6 @@ public class UserController {
             AuthResponse response = userService.registerUser(request, httpRequest);
             setRefreshCookie(httpResponse, response.getRefreshToken());
 
-            // Reset attempts on successful registration
             rateLimitService.resetRegistrationAttempts(clientIP);
             log.info("Registration successful for user: {} from IP: {}", request.getUsername(), clientIP);
 
@@ -94,7 +90,7 @@ public class UserController {
         } catch (Exception e) {
             log.error("Registration failed for user: {} from IP: {}", request.getUsername(), clientIP, e);
 
-            // Record failed attempt for rate limiting
+
             rateLimitService.recordFailedRegistrationAttempt(clientIP);
 
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -106,11 +102,10 @@ public class UserController {
     public ResponseEntity<?> loginUser(@Valid @RequestBody UserLoginRequest request,
                                        HttpServletRequest httpRequest,
                                        HttpServletResponse httpResponse) {
-        String clientIP = getClientIP(httpRequest);
+        String clientIP = httpRequest.getRemoteAddr();
         log.info("Login attempt for user: {} from IP: {}", request.getUsername(), clientIP);
 
         try {
-            // Check if reCAPTCHA is required
             boolean captchaRequired = rateLimitService.isCaptchaRequiredForLogin(clientIP);
 
             if (captchaRequired) {
@@ -139,7 +134,6 @@ public class UserController {
             AuthResponse response = userService.authenticateUser(request, httpRequest);
             setRefreshCookie(httpResponse, response.getRefreshToken());
 
-            // Reset attempts on successful login
             rateLimitService.resetLoginAttempts(clientIP);
             log.info("Login successful for user: {} from IP: {}", request.getUsername(), clientIP);
 
@@ -148,7 +142,6 @@ public class UserController {
         } catch (Exception e) {
             log.error("Login failed for user: {} from IP: {}", request.getUsername(), clientIP, e);
 
-            // Record failed attempt for rate limiting
             rateLimitService.recordFailedLoginAttempt(clientIP);
 
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -175,7 +168,6 @@ public class UserController {
                     }
                 }
             }
-            // Blacklist the presented ACCESS token if provided with refresh request
             try {
                 String candidate = null;
                 String bearer = request.getHeader("Authorization");
@@ -304,27 +296,10 @@ public class UserController {
         return 1L;
     }
 
-    /**
-     * Extract client IP address from request
-     */
-    private String getClientIP(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        
-        String xRealIP = request.getHeader("X-Real-IP");
-        if (xRealIP != null && !xRealIP.isEmpty() && !"unknown".equalsIgnoreCase(xRealIP)) {
-            return xRealIP;
-        }
-        
-        return request.getRemoteAddr();
-    }
 
     private void setRefreshCookie(HttpServletResponse resp, String token) {
         if (token == null || token.isBlank()) return;
         try {
-            // We don't have JwtIssuerService here, so just set a default max-age; browser will replace on rotation
             jakarta.servlet.http.Cookie ck = new jakarta.servlet.http.Cookie("refresh_token", token);
             ck.setHttpOnly(true);
             ck.setPath("/");

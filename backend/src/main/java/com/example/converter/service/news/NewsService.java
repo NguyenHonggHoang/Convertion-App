@@ -74,11 +74,9 @@ public class NewsService {
                 String summary = String.valueOf(item.getOrDefault("summary", ""));
                 String publishedAtStr = String.valueOf(item.get("published_at"));
 
-                // Parse ISO 8601 format with timezone
                 LocalDateTime publishedAt;
                 try {
                     if (publishedAtStr.contains("+") || publishedAtStr.contains("Z")) {
-                        // Remove timezone info for LocalDateTime parsing
                         String cleanDateTime = publishedAtStr.replaceAll("\\+\\d{2}:\\d{2}|Z", "");
                         publishedAt = LocalDateTime.parse(cleanDateTime);
                     } else {
@@ -89,7 +87,6 @@ public class NewsService {
                     publishedAt = LocalDateTime.now();
                 }
 
-                // Call sentiment service - FIX: Use correct field names
                 Map<String, String> sentimentReq = Map.of("text", title + ". " + content);
 
                 @SuppressWarnings("unchecked")
@@ -100,7 +97,6 @@ public class NewsService {
                         .bodyToMono(Map.class)
                         .block();
 
-                // FIX: sentiment service returns "label" and "score", not "sentiment_label" and "sentiment_score"
                 String sentimentLabel = sentimentRes != null ? String.valueOf(sentimentRes.getOrDefault("label", "neutral")) : "neutral";
                 Double sentimentScore = sentimentRes != null && sentimentRes.get("score") != null
                         ? Double.valueOf(sentimentRes.get("score").toString()) : 0.0;
@@ -164,11 +160,9 @@ public class NewsService {
                 String category = String.valueOf(item.get("category"));
                 String summary = String.valueOf(item.getOrDefault("summary", ""));
                 String publishedAtStr = String.valueOf(item.get("published_at"));
-                // Parse ISO 8601 format with timezone
                 LocalDateTime publishedAt;
                 try {
                     if (publishedAtStr.contains("+") || publishedAtStr.contains("Z")) {
-                        // Remove timezone info for LocalDateTime parsing
                         String cleanDateTime = publishedAtStr.replaceAll("\\+\\d{2}:\\d{2}|Z", "");
                         publishedAt = LocalDateTime.parse(cleanDateTime);
                     } else {
@@ -179,7 +173,6 @@ public class NewsService {
                     publishedAt = LocalDateTime.now();
                 }
 
-                // Call sentiment service - FIX: Use correct field names
                 Map<String, String> sentimentReq = Map.of("text", title + ". " + content);
                 @SuppressWarnings("unchecked")
                 Map<String, Object> sentimentRes = webClient.post()

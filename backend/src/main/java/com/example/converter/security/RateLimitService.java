@@ -1,6 +1,7 @@
 package com.example.converter.security;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -9,7 +10,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Service to manage rate limiting and determine when reCAPTCHA is required
+ * Service to track login and registration attempts per IP address
+ * and determine if reCAPTCHA is required based on thresholds.
  */
 @Service
 @Slf4j
@@ -24,22 +26,24 @@ public class RateLimitService {
 
     public static class AttemptInfo {
         public final AtomicInteger count = new AtomicInteger(0);
-        public LocalDateTime firstAttempt = LocalDateTime.now();
-        public LocalDateTime lastAttempt = LocalDateTime.now();
+        public long firstAttemptEpochSec = System.currentTimeMillis()/1000;
+        public long lastAttemptEpochSec  = System.currentTimeMillis()/1000;
 
         public boolean isExpired() {
-            return lastAttempt.isBefore(LocalDateTime.now().minusMinutes(WINDOW_MINUTES));
+            long now = System.currentTimeMillis()/1000;
+            return lastAttemptEpochSec < now - WINDOW_MINUTES * 60L;
         }
 
         public void recordAttempt() {
             count.incrementAndGet();
-            lastAttempt = LocalDateTime.now();
+            lastAttemptEpochSec = System.currentTimeMillis()/1000;
         }
 
         public void reset() {
             count.set(0);
-            firstAttempt = LocalDateTime.now();
-            lastAttempt = LocalDateTime.now();
+            long now = System.currentTimeMillis()/1000;
+            firstAttemptEpochSec = now;
+            lastAttemptEpochSec  = now;
         }
     }
 
@@ -117,19 +121,20 @@ public class RateLimitService {
         });
     }
 
-    /**
-     * Get current attempt count for debugging
-     */
-    public int getLoginAttemptCount(String clientIP) {
-        AttemptInfo info = loginAttempts.get(clientIP);
-        return (info != null && !info.isExpired()) ? info.count.get() : 0;
+    // Cleanup
+    @Scheduled(fixedDelay = 300000)
+    public void purgeExpired() {
+        purgeMap(loginAttempts, "login");
+        purgeMap(registrationAttempts, "registration");
     }
 
-    /**
-     * Get current attempt count for debugging
-     */
-    public int getRegistrationAttemptCount(String clientIP) {
-        AttemptInfo info = registrationAttempts.get(clientIP);
-        return (info != null && !info.isExpired()) ? info.count.get() : 0;
+    private void purgeMap(Map<String, AttemptInfo> map, String action) {
+        int before = map.size();
+        map.entrySet().removeIf(e -> e.getValue().isExpired());
+        int after = map.size();
+        if (after != before) {
+            log.info("Purged {} expired {} entries: {} -> {}", (before-after), action, before, after);
+        }
     }
+
 }

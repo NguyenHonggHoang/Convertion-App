@@ -86,7 +86,6 @@ public class UserService implements UserDetailsService {
         User savedUser = userRepository.save(user);
         log.info("User registered successfully: {}", savedUser.getUsername());
 
-        // Authenticate ngay sau khi đăng ký
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
@@ -133,7 +132,6 @@ public class UserService implements UserDetailsService {
             User user = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Cập nhật thời gian đăng nhập cuối
             user.setLastLoginAt(LocalDateTime.now());
             userRepository.save(user);
 
@@ -142,7 +140,6 @@ public class UserService implements UserDetailsService {
             String accessToken = jwtIssuerService.issueAccessToken(String.valueOf(user.getId()), roles, deviceId);
             String refreshToken = jwtIssuerService.issueRefreshToken(String.valueOf(user.getId()), deviceId);
 
-            // Allow refresh token hiện hành cho user
             try {
                 Map<String, Object> rClaims = jwtIssuerService.getClaimsFromToken(refreshToken);
                 String sub = (String) rClaims.get("sub");
@@ -178,14 +175,12 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("Invalid refresh token");
         }
 
-        // Parse claims từ token
         Map<String, Object> claims = jwtIssuerService.getClaimsFromToken(token);
         String tokenType = (String) claims.get("token_type");
         if (!"refresh".equals(tokenType)) {
             throw new RuntimeException("Not a refresh token");
         }
 
-        // Lấy subject và JTI để kiểm tra allow/blacklist
         String sub = (String) claims.get("sub");
         String oldJti = (String) claims.get("jti");
         Number expNum = (Number) claims.get("exp");
@@ -196,7 +191,6 @@ public class UserService implements UserDetailsService {
         long now = System.currentTimeMillis() / 1000L;
         long ttlRemain = Math.max(1, expNum.longValue() - now);
 
-        // Chỉ cho phép refresh nếu refresh token hiện hành được allow và không bị blacklist
         if (!refreshTokenService.isAllowed(sub, oldJti)) {
             throw new RuntimeException("Refresh token not allowed (rotated or revoked)");
         }
@@ -204,7 +198,6 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("Refresh token revoked");
         }
 
-        // Blacklist access token cũ nếu client cung cấp qua header X-Access-Token; nếu không có thì revoke theo epoch
         try {
             String oldAccessHeader = httpRequest.getHeader("X-Access-Token");
             if (oldAccessHeader != null && !oldAccessHeader.isBlank()) {
@@ -222,7 +215,6 @@ public class UserService implements UserDetailsService {
                     }
                 }
             } else {
-                // Không có access token cũ, revoke tất cả access token phát hành trước thời điểm hiện tại
                 accessTokenService.revokeAllSinceNow(sub);
                 log.info("Revoked all previous access tokens by epoch for sub: {}", sub);
             }
@@ -230,7 +222,6 @@ public class UserService implements UserDetailsService {
             log.warn("Failed to blacklist old access token or revoke by epoch: {}", e.getMessage());
         }
 
-        // Tìm user và tạo token mới
         long userId;
         try {
             userId = Long.parseLong(sub);
@@ -244,11 +235,9 @@ public class UserService implements UserDetailsService {
         UserDetails userDetails = loadUserByUsername(user.getUsername());
         List<String> roles = extractRoles(userDetails);
 
-        // Tạo access và refresh token mới
         String newAccessToken = jwtIssuerService.issueAccessToken(String.valueOf(user.getId()), roles, null);
         String newRefreshToken = jwtIssuerService.issueRefreshToken(String.valueOf(user.getId()), null);
 
-        // Rotate: allow JTI mới, blacklist JTI cũ đến khi hết hạn
         try {
             Map<String, Object> newClaims = jwtIssuerService.getClaimsFromToken(newRefreshToken);
             String newJti = (String) newClaims.get("jti");
@@ -257,7 +246,6 @@ public class UserService implements UserDetailsService {
                 long newTtl = Math.max(1, newExpNum.longValue() - now);
                 refreshTokenService.allow(sub, newJti, newTtl);
             }
-            // Blacklist JTI cũ để tránh replay đến khi hết hạn
             refreshTokenService.blacklist(oldJti, ttlRemain);
         } catch (RuntimeException e) {
             log.warn("Refresh rotation housekeeping failed: {}", e.getMessage());
@@ -278,19 +266,16 @@ public class UserService implements UserDetailsService {
 
         String token = authHeader.substring(7);
 
-        // Validate refresh token
         if (!jwtIssuerService.validateToken(token)) {
             throw new RuntimeException("Invalid refresh token");
         }
 
-        // Parse claims từ token
         Map<String, Object> claims = jwtIssuerService.getClaimsFromToken(token);
         String tokenType = (String) claims.get("token_type");
         if (!"refresh".equals(tokenType)) {
             throw new RuntimeException("Not a refresh token");
         }
 
-        // Lấy subject và JTI để kiểm tra allow/blacklist
         String sub = (String) claims.get("sub");
         String oldJti = (String) claims.get("jti");
         Number expNum = (Number) claims.get("exp");
@@ -301,7 +286,6 @@ public class UserService implements UserDetailsService {
         long now = System.currentTimeMillis() / 1000L;
         long ttlRemain = Math.max(1, expNum.longValue() - now);
 
-        // Chỉ cho phép refresh nếu refresh token hiện hành được allow và không bị blacklist
         if (!refreshTokenService.isAllowed(sub, oldJti)) {
             throw new RuntimeException("Refresh token not allowed (rotated or revoked)");
         }
@@ -309,7 +293,6 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("Refresh token revoked");
         }
 
-        // Blacklist access token cũ nếu client cung cấp qua header X-Access-Token; nếu không có thì revoke theo epoch
         try {
             String oldAccessHeader = request.getHeader("X-Access-Token");
             if (oldAccessHeader != null && !oldAccessHeader.isBlank()) {
@@ -327,7 +310,6 @@ public class UserService implements UserDetailsService {
                     }
                 }
             } else {
-                // Không có access token cũ, revoke tất cả access token phát hành trước thời điểm hiện tại
                 accessTokenService.revokeAllSinceNow(sub);
                 log.info("Revoked all previous access tokens by epoch for sub: {}", sub);
             }
@@ -335,7 +317,6 @@ public class UserService implements UserDetailsService {
             log.warn("Failed to blacklist old access token or revoke by epoch: {}", e.getMessage());
         }
 
-        // Tìm user và tạo token mới
         long userId;
         try {
             userId = Long.parseLong(sub);
@@ -349,11 +330,9 @@ public class UserService implements UserDetailsService {
         UserDetails userDetails = loadUserByUsername(user.getUsername());
         List<String> roles = extractRoles(userDetails);
 
-        // Tạo access và refresh token mới
         String newAccessToken = jwtIssuerService.issueAccessToken(String.valueOf(user.getId()), roles, null);
         String newRefreshToken = jwtIssuerService.issueRefreshToken(String.valueOf(user.getId()), null);
 
-        // Rotate: allow JTI mới, blacklist JTI cũ đến khi hết hạn
         try {
             Map<String, Object> newClaims = jwtIssuerService.getClaimsFromToken(newRefreshToken);
             String newJti = (String) newClaims.get("jti");
@@ -362,7 +341,6 @@ public class UserService implements UserDetailsService {
                 long newTtl = Math.max(1, newExpNum.longValue() - now);
                 refreshTokenService.allow(sub, newJti, newTtl);
             }
-            // Blacklist JTI cũ để tránh replay đến khi hết hạn
             refreshTokenService.blacklist(oldJti, ttlRemain);
         } catch (RuntimeException e) {
             log.warn("Refresh rotation housekeeping failed: {}", e.getMessage());
@@ -427,7 +405,7 @@ public class UserService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUsername())
                 .password(user.getPasswordHash())
-                .authorities(new ArrayList<>()) // Có thể thêm roles từ database sau
+                .authorities(new ArrayList<>())
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
@@ -443,25 +421,14 @@ public class UserService implements UserDetailsService {
             String v = request.getHeader(k);
             if (StringUtils.hasText(v)) return sanitizeDeviceId(v);
         }
-        // Fallback: derive from UA + client IP
         String ua = defaultString(request.getHeader("User-Agent"));
-        String ip = getClientIP(request);
+        String ip = request.getRemoteAddr();
         String seed = ua + "|" + ip;
         return shortHash(seed);
     }
 
-    private String getClientIP(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(xff)) {
-            return xff.split(",")[0].trim();
-        }
-        String xri = request.getHeader("X-Real-IP");
-        if (StringUtils.hasText(xri)) return xri;
-        return request.getRemoteAddr();
-    }
 
     private String sanitizeDeviceId(String raw) {
-        // Keep it URL-safe and short; strip spaces; limit length
         String s = raw.trim();
         if (s.length() > 128) s = s.substring(0, 128);
         return s;
@@ -477,7 +444,6 @@ public class UserService implements UserDetailsService {
             for (int i = 0; i < digest.length; i++) {
                 sb.append(String.format("%02x", digest[i]));
             }
-            // return first 16 chars to keep concise
             String hex = sb.toString();
             return hex.substring(0, Math.min(16, hex.length()));
         } catch (Exception e) {

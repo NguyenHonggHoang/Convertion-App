@@ -15,9 +15,6 @@ public class FxRateCacheService {
     private final BaseRatesCacheService baseRatesCacheService;
     private final CacheManager cacheManager;
 
-//    public Map<String, Double> getBaseRates(String baseCurrency){
-//        return baseRatesCacheService.getBaseRates(baseCurrency);
-//    }
 
     public Map<String, Double> refreshBaseRates(String baseCurrency) {
         return baseRatesCacheService.refreshBaseRates(baseCurrency);

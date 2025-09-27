@@ -75,7 +75,7 @@ def _percent_effect(text: str) -> float:
             val = float(m.group(1))
         except:
             continue
-        mag = min(abs(val) / 12.0, 0.5)  # nhẹ hơn (chia 12, max 0.5)
+        mag = min(abs(val) / 12.0, 0.5) 
         span_start = max(0, m.start() - 20)
         span_end   = min(len(text), m.end() + 20)
         ctx = text[span_start:span_end]
@@ -124,7 +124,7 @@ def analyze_text(text: str) -> Tuple[str, float]:
         raw *= 0.85
 
     if finance_hits > 0:
-        raw *= min(1.0, 0.9 + 0.04 * finance_hits)  # boost nhẹ hơn
+        raw *= min(1.0, 0.9 + 0.04 * finance_hits)  
         raw = max(-1.0, min(1.0, raw))
 
     label = "positive" if raw > 0.06 else ("negative" if raw < -0.06 else "neutral")

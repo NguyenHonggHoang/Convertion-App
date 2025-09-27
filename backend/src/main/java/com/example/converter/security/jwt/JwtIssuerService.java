@@ -30,10 +30,10 @@ public class JwtIssuerService {
 
     /**
      * Phát hành token tùy chỉnh với các tham số linh hoạt
-     * @param subject subject của token (user ID hoặc service name)
+     * @param subject subject của token
      * @param roles danh sách roles
-     * @param deviceId device ID (có thể null)
-     * @param ttlSeconds thời gian sống của token (giây)
+     * @param deviceId device ID
+     * @param ttlSeconds thời gian sống của token
      * @param extraClaims các claim bổ sung
      * @return JWT token string
      */
@@ -119,14 +119,12 @@ public class JwtIssuerService {
             RSAPrivateKey privateKey = pemUtil.getPrivateKey(kid);
             RSAPublicKey publicKey = getPublicKeyFromPrivate(privateKey);
 
-            // Verify signature
             RSASSAVerifier verifier = new RSASSAVerifier(publicKey);
             if (!signedJWT.verify(verifier)) {
                 log.error("Token signature không hợp lệ");
                 return false;
             }
 
-            // Kiểm tra expiration
             JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
             Date expirationTime = claims.getExpirationTime();
             if (expirationTime != null && expirationTime.before(new Date())) {

@@ -31,8 +31,7 @@ public class TokenBlacklistService {
     try {
       String v = redis.opsForValue().get(key(jti));
       return v != null;
-    } catch (DataAccessException ex) { // includes RedisConnectionFailureException
-      // On Redis outage, default to not blacklisted so valid JWTs still authenticate
+    } catch (DataAccessException ex) {
       log.warn("Redis unavailable while checking blacklist for jti={}, defaulting to NOT blacklisted: {}", jti, ex.getMessage());
       return false;
     } catch (RuntimeException ex) {

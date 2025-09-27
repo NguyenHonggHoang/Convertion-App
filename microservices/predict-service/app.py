@@ -1,4 +1,3 @@
-# app.py — predict-service (Holt+damping, sentiment→slope+impulse), tuned low-sensitivity
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
@@ -19,11 +18,11 @@ CORS(app)
 # ===== Config =====
 app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", str(2 * 1024 * 1024)))
 _PRED_CACHE = {}
-_PRED_CACHE_TTL = int(os.getenv("PRED_CACHE_TTL", "300"))  # seconds
+_PRED_CACHE_TTL = int(os.getenv("PRED_CACHE_TTL", "300")) 
 
-# External history (optional)
+# External history 
 HISTORY_SOURCE_URL = os.getenv("HISTORY_SOURCE_URL", "").strip()
-HISTORY_SOURCE_AUTH = os.getenv("HISTORY_SOURCE_AUTH", "none").lower()   # none|apikey|bearer
+HISTORY_SOURCE_AUTH = os.getenv("HISTORY_SOURCE_AUTH", "none").lower()   
 HISTORY_SOURCE_API_KEY_HEADER = os.getenv("HISTORY_SOURCE_API_KEY_HEADER", "X-API-Key")
 HISTORY_SOURCE_API_KEY = os.getenv("HISTORY_SOURCE_API_KEY", "").strip()
 HISTORY_SOURCE_BEARER = os.getenv("HISTORY_SOURCE_BEARER", "").strip()
@@ -31,29 +30,28 @@ HISTORY_SOURCE_BEARER = os.getenv("HISTORY_SOURCE_BEARER", "").strip()
 # Preprocess controls
 FILL_MISSING_DAYS = os.getenv("FILL_MISSING_DAYS", "false").lower() == "true"
 MAD_K = float(os.getenv("MAD_K", "6.0"))
-USE_LOG_VOL_THRESHOLD = float(os.getenv("USE_LOG_VOL_THRESHOLD", "0.12"))  # hạ ngưỡng chút
+USE_LOG_VOL_THRESHOLD = float(os.getenv("USE_LOG_VOL_THRESHOLD", "0.12")) 
 
 # Soft clamp percentage controls
-# Base fallback clamp pct (used when sentiment is not provided)
+# Base fallback clamp pct 
 SOFT_CLAMP_PCT = float(os.getenv("SOFT_CLAMP_PCT", "0.005"))
-# Sentiment-based clamp gain: pct = abs(sentiment) * SENTI_CLAMP_GAIN (e.g., 0.6 -> 0.06 when gain=0.1)
+# Sentiment-based clamp gain
 SENTI_CLAMP_GAIN = float(os.getenv("SENTI_CLAMP_GAIN", "0.1"))
 # Minimum and maximum clamp bounds for stability
 MIN_SOFT_CLAMP_PCT = float(os.getenv("MIN_SOFT_CLAMP_PCT", "0.005"))
 MAX_SOFT_CLAMP_PCT = float(os.getenv("MAX_SOFT_CLAMP_PCT", "0.10"))
 
-# Time-decay weights (giữ để tương thích — không dùng trong Holt)
+# Time-decay weights 
 WEIGHT_HALF_LIFE_DAYS = int(os.getenv("WEIGHT_HALF_LIFE_DAYS", "14"))
 
-# --- Holt’s Linear smoothing (độ nhạy thấp hơn) ---
-HOLT_ALPHA = float(os.getenv("HOLT_ALPHA", "0.30"))       # level
-HOLT_BETA  = float(os.getenv("HOLT_BETA",  "0.20"))       # trend
-HOLT_DAMPING = float(os.getenv("HOLT_DAMPING", "0.92"))   # <1.0
+# --- Holt’s Linear smoothing  ---
+HOLT_ALPHA = float(os.getenv("HOLT_ALPHA", "0.30"))       
+HOLT_BETA  = float(os.getenv("HOLT_BETA",  "0.20"))      
+HOLT_DAMPING = float(os.getenv("HOLT_DAMPING", "0.92")) 
 
-# --- Sentiment mapping (độ nhạy thấp hơn) ---
-SENTI_SLOPE_GAIN   = float(os.getenv("SENTI_SLOPE_GAIN", "0.35"))  # ảnh hưởng lên độ dốc
-SENTI_IMPULSE_GAIN = float(os.getenv("SENTI_IMPULSE_GAIN", "0.50"))# xung ngắn hạn
-SENTI_HALF_LIFE_DAYS = int(os.getenv("SENTI_HALF_LIFE_DAYS", "2")) # xung tắt nhanh
+SENTI_SLOPE_GAIN   = float(os.getenv("SENTI_SLOPE_GAIN", "0.35")) 
+SENTI_IMPULSE_GAIN = float(os.getenv("SENTI_IMPULSE_GAIN", "0.50"))
+SENTI_HALF_LIFE_DAYS = int(os.getenv("SENTI_HALF_LIFE_DAYS", "2")) 
 
 # ===== Cache helpers =====
 def _cache_key(base, quote, horizon, sentiment_adj, hist_hash):
@@ -189,7 +187,7 @@ def _holt_linear_predict(df: pd.DataFrame, horizon: int, sentiment_adj: float, u
     s = max(-1.0, min(1.0, s))
 
     sigma_lr = _log_returns_std(df)
-    sigma_scale = max(sigma_lr, 1e-4)  # tối thiểu để không “0 hóa” impulse
+    sigma_scale = max(sigma_lr, 1e-4) 
 
     b_eff = b * (1.0 + SENTI_SLOPE_GAIN * s)
     impulse_gain = SENTI_IMPULSE_GAIN * s * sigma_scale
@@ -247,7 +245,6 @@ def _fit_predict(df: pd.DataFrame, horizon: int, sentiment_adj):
 
     return _holt_linear_predict(df, horizon, sentiment_adj, use_log)
 
-# Removed USD/VND hard-coded clamp; we apply a global soft clamp for all pairs
 
 def _clamp_near_last(df: pd.DataFrame, preds: list, pct: float) -> list:
     try:
@@ -292,9 +289,7 @@ def predict():
         data = request.get_json(silent=True) or {}
         base = (data.get('base_currency') or '').strip().upper()
         quote = (data.get('target_currency') or '').strip().upper()
-        horizon = int(data.get('horizon_days', 7))
-        # Force horizon to 2 days max as requested
-        horizon = max(1, min(2, horizon))
+        horizon = int(data.get('horizon_days', 2))
         sentiment_adj = data.get('sentiment_adjust', None)
 
         news_data = data.get('news_data', [])
@@ -386,8 +381,7 @@ def predict_batch():
             try:
                 base = (req.get('base_currency') or '').strip().upper()
                 quote = (req.get('target_currency') or '').strip().upper()
-                horizon = int(req.get('horizon_days', 7))
-                horizon = max(1, min(2, horizon))
+                horizon = int(req.get('horizon_days', 2))
                 sentiment_adj = req.get('sentiment_adjust', None)
                 if sentiment_adj is not None:
                     sentiment_adj = float(sentiment_adj)

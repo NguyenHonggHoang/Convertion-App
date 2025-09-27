@@ -11,7 +11,6 @@ import java.util.Map;
 
 /**
  * Isolated cache facade for base FX rates. Keeping @Cacheable here avoids
- * self-invocation issues when called from other services.
  */
 @Service
 @RequiredArgsConstructor

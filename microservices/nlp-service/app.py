@@ -1,4 +1,3 @@
-# Advanced NLP Service with FinBERT, Enhanced Sentiment Analysis and Multi-source News Processing
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
@@ -11,7 +10,6 @@ from typing import Dict, List, Tuple, Optional
 import json
 from datetime import datetime, timedelta
 
-# Advanced NLP imports
 try:
     from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
     import torch
@@ -54,7 +52,6 @@ class FinBERTAnalyzer:
             return
         
         try:
-            # Use ProsusAI/finbert for financial sentiment
             model_name = "ProsusAI/finbert"
             
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -89,25 +86,21 @@ class FinBERTAnalyzer:
             return self._fallback_sentiment(text)
         
         try:
-            # Clean and truncate text for FinBERT
             clean_text = self._clean_text(text)
             
-            # FinBERT has token limit, truncate if needed
             if len(clean_text) > 512:
                 clean_text = clean_text[:512]
             
             result = self.sentiment_pipeline(clean_text)[0]
             
-            # Convert FinBERT labels to our format
             label = result['label'].lower()
             score = float(result['score'])
             
-            # Map to our scoring system [-1, 1]
             if label == 'positive':
                 sentiment_score = score
             elif label == 'negative':
                 sentiment_score = -score
-            else:  # neutral
+            else:  
                 sentiment_score = 0.0
             
             return label, sentiment_score
@@ -119,8 +112,8 @@ class FinBERTAnalyzer:
     def _clean_text(self, text: str) -> str:
         """Clean text for FinBERT processing"""
         text = html.unescape(text)
-        text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
-        text = re.sub(r'http[s]?://\S+', '', text)  # Remove URLs
+        text = re.sub(r'<[^>]+>', '', text) 
+        text = re.sub(r'http[s]?://\S+', '', text)
         text = re.sub(r'\s+', ' ', text).strip()
         return text
     
@@ -224,7 +217,6 @@ class MultiSourceNewsCrawler:
             source_news = self.crawl_source(source_name, limit_per_source)
             all_news.extend(source_news)
         
-        # Deduplicate based on title similarity
         unique_news = self._deduplicate_news(all_news)
         
         return unique_news
@@ -246,7 +238,6 @@ class AdvancedTextProcessor:
     """Enhanced text processing with financial entity recognition"""
     
     def __init__(self):
-        # Extended financial categories
         self.categories = {
             "forex": [
                 "forex", "fx", "currency", "exchange rate", "dollar", "euro", "yen", "pound",
@@ -272,7 +263,6 @@ class AdvancedTextProcessor:
             ]
         }
         
-        # Financial entity patterns
         self.currency_pattern = re.compile(r'\b[A-Z]{3}(?:/[A-Z]{3})?\b')
         self.percentage_pattern = re.compile(r'[+-]?\d+(?:\.\d+)?%')
         self.number_pattern = re.compile(r'\$?\d+(?:\.\d+)?(?:[BMK])?')
@@ -299,7 +289,7 @@ class AdvancedTextProcessor:
         numbers = self.number_pattern.findall(text)
         entities["numbers"] = numbers
         
-        # Extract financial indicators (simple keyword matching)
+        # Extract financial indicators 
         text_lower = text.lower()
         for category, keywords in self.categories.items():
             found_keywords = [kw for kw in keywords if kw in text_lower]
@@ -317,8 +307,7 @@ class AdvancedTextProcessor:
             score = 0
             for keyword in keywords:
                 if keyword in text_lower:
-                    # Weight by keyword importance and frequency
-                    weight = 2.0 if len(keyword) > 6 else 1.0  # Longer terms more specific
+                    weight = 2.0 if len(keyword) > 6 else 1.0 
                     frequency = text_lower.count(keyword)
                     score += weight * frequency
             
@@ -336,33 +325,27 @@ class AdvancedTextProcessor:
         if len(sentences) <= max_sentences:
             return text
         
-        # Score sentences based on financial keywords and position
         sentence_scores = []
         
         for i, sentence in enumerate(sentences):
             score = 0
             
-            # Position weight (earlier sentences more important)
             position_weight = 1.0 - (i / len(sentences)) * 0.3
             
-            # Keyword weight
             sentence_lower = sentence.lower()
             for category, keywords in self.categories.items():
                 for keyword in keywords:
                     if keyword in sentence_lower:
                         score += 1
-            
-            # Length normalization (prefer medium-length sentences)
+        
             length_penalty = 0 if 50 <= len(sentence) <= 200 else -0.5
             
             final_score = (score * position_weight) + length_penalty
             sentence_scores.append((sentence, final_score))
         
-        # Select top sentences
         sentence_scores.sort(key=lambda x: x[1], reverse=True)
         top_sentences = [s[0] for s in sentence_scores[:max_sentences]]
         
-        # Maintain original order
         result_sentences = []
         for sentence in sentences:
             if sentence in top_sentences:
@@ -370,7 +353,6 @@ class AdvancedTextProcessor:
         
         return '. '.join(result_sentences) + '.'
 
-# Initialize components
 finbert_analyzer = FinBERTAnalyzer()
 news_crawler = MultiSourceNewsCrawler()
 text_processor = AdvancedTextProcessor()
@@ -412,17 +394,13 @@ def advanced_process():
         
         full_text = f"{title}. {content}".strip('. ')
         
-        # FinBERT sentiment analysis
         sentiment_label, sentiment_score = finbert_analyzer.analyze_sentiment(full_text)
         
-        # Advanced categorization
         category_scores = text_processor.categorize_advanced(full_text)
         primary_category = max(category_scores, key=category_scores.get) if category_scores else "general"
-        
-        # Enhanced summarization
+
         summary = text_processor.summarize_advanced(content or title)
         
-        # Financial entity extraction
         entities = text_processor.extract_financial_entities(full_text)
         
         return jsonify({
@@ -465,7 +443,6 @@ def batch_advanced_process():
                 full_text = f"{title}. {content}".strip('. ')
                 
                 if full_text:
-                    # Process with FinBERT and advanced NLP
                     sentiment_label, sentiment_score = finbert_analyzer.analyze_sentiment(full_text)
                     category_scores = text_processor.categorize_advanced(full_text)
                     primary_category = max(category_scores, key=category_scores.get) if category_scores else "general"
@@ -523,7 +500,7 @@ def crawl_multiple_sources():
                 articles = news_crawler.crawl_source(source, limit_per_source)
                 all_articles.extend(articles)
         
-        # Process articles with FinBERT
+
         processed_articles = []
         for article in all_articles:
             try:

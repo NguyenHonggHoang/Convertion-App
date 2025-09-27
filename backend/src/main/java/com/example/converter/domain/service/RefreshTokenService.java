@@ -43,7 +43,6 @@ public class RefreshTokenService {
       String allowed = redis.opsForValue().get(keyAllow(sub));
       return jti.equals(allowed);
     } catch (Exception e) {
-      // Conservative default: if Redis fails, deny refresh
       log.warn("RefreshTokenService.isAllowed failed for sub={}, jti={} : {}", sub, jti, e.getMessage());
       return false;
     }

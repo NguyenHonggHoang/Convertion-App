@@ -371,10 +371,16 @@ def call_nlp_batch(articles: List[dict], batch_size: int = 100) -> List[Optional
                 continue
             data = r.json()
             for item in data.get("results", []):
-                results[item.get("id")] = {
+                # Extract core fields with optional sentiment from NLP
+                _id = item.get("id")
+                sentiment = item.get("sentiment") or {}
+                results[_id] = {
                     "category": item.get("category", "general"),
                     "summary": item.get("summary"),
+                    # Some NLP implementations may not provide pairs; keep compatibility
                     "pairs": item.get("pairs", []),
+                    "sentiment_label": sentiment.get("label"),
+                    "sentiment_score": sentiment.get("score"),
                 }
     except Exception as e:
         log.warning("NLP batch fail: %s", e)
@@ -482,23 +488,32 @@ def enrich_articles_batch(articles: List[dict]) -> List[dict]:
     if not articles:
         return []
     nlp_out = call_nlp_batch(articles, batch_size=int(os.getenv("NLP_BATCH", "100")))
-    
-    texts = []
-    for a in articles:
-        title = a.get('title', '').strip()
-        content = a.get('content', '').strip()
-        description = a.get('description', '').strip()
-        
-        combined_parts = [title, content, description]
-        combined_text = '. '.join([part for part in combined_parts if part and len(part) > 10])
-        
-        # Nếu vẫn quá ngắn, chỉ dùng title
-        if len(combined_text) < 20:
-            combined_text = title
-            
-        texts.append(combined_text)
-    
-    senti_scores = call_sentiment_batch(texts, batch_size=int(os.getenv("SENTI_BATCH", "200")))
+
+    # Build fallback list only for items missing NLP sentiment
+    fallback_indices: List[int] = []
+    fallback_texts: List[str] = []
+    for i, a in enumerate(articles):
+        o = nlp_out[i] if nlp_out and i < len(nlp_out) else None
+        has_nlp_sentiment = bool(o and (o.get("sentiment_score") is not None))
+        if not has_nlp_sentiment:
+            title = a.get('title', '').strip()
+            content = a.get('content', '').strip()
+            description = a.get('description', '').strip()
+            combined_parts = [title, content, description]
+            combined_text = '. '.join([part for part in combined_parts if part and len(part) > 10])
+            if len(combined_text) < 20:
+                combined_text = title
+            fallback_indices.append(i)
+            fallback_texts.append(combined_text)
+
+    fallback_scores_by_index: Dict[int, Optional[float]] = {}
+    if fallback_indices:
+        scores = call_sentiment_batch(fallback_texts, batch_size=int(os.getenv("SENTI_BATCH", "200")))
+        for idx, sc in zip(fallback_indices, scores):
+            try:
+                fallback_scores_by_index[idx] = None if sc is None else float(sc)
+            except Exception:
+                fallback_scores_by_index[idx] = None
 
     enriched = []
     for i, a in enumerate(articles):
@@ -506,8 +521,23 @@ def enrich_articles_batch(articles: List[dict]) -> List[dict]:
         cat = (o and o.get("category")) or classify_local(a["title"], a["content"])
         summary = (o and o.get("summary")) or summarize_local(a["content"])
         pairs = (o and o.get("pairs")) or []
-        s = senti_scores[i] if senti_scores and i < len(senti_scores) else None
-        senti = 0.0 if (s is None) else float(s)
+
+        # Use NLP sentiment if present; otherwise fallback score; default 0.0
+        s_nlp = o.get("sentiment_score") if o else None
+        if s_nlp is None:
+            s_fallback = fallback_scores_by_index.get(i)
+            senti = 0.0 if (s_fallback is None) else float(s_fallback)
+            label = (
+                "positive" if senti > 0.06 else ("negative" if senti < -0.06 else "neutral")
+            )
+        else:
+            try:
+                senti = float(s_nlp)
+            except Exception:
+                senti = 0.0
+            label = (o.get("sentiment_label") or (
+                "positive" if senti > 0.06 else ("negative" if senti < -0.06 else "neutral")
+            ))
 
         enriched.append({
             **a,
@@ -515,6 +545,7 @@ def enrich_articles_batch(articles: List[dict]) -> List[dict]:
             "summary": summary,
             "pairs": pairs,
             "sentiment_score": senti,
+            "sentiment_label": label,
         })
 
     enriched.sort(key=lambda x: x["published_at"], reverse=True)

@@ -87,19 +87,25 @@ public class NewsService {
                     publishedAt = LocalDateTime.now();
                 }
 
-                Map<String, String> sentimentReq = Map.of("text", title + ". " + content);
-
-                @SuppressWarnings("unchecked")
-                Map<String, Object> sentimentRes = webClient.post()
-                        .uri(sentimentServiceUrl)
-                        .bodyValue(sentimentReq)
-                        .retrieve()
-                        .bodyToMono(Map.class)
-                        .block();
-
-                String sentimentLabel = sentimentRes != null ? String.valueOf(sentimentRes.getOrDefault("label", "neutral")) : "neutral";
-                Double sentimentScore = sentimentRes != null && sentimentRes.get("score") != null
-                        ? Double.valueOf(sentimentRes.get("score").toString()) : 0.0;
+                String sentimentLabel = String.valueOf(item.getOrDefault("sentiment_label", "neutral"));
+                Double sentimentScore = 0.0;
+                Object scoreObj = item.get("sentiment_score");
+                if (scoreObj != null) {
+                    try { sentimentScore = Double.valueOf(scoreObj.toString()); } catch (Exception ignored) {}
+                } else {
+                    Map<String, String> sentimentReq = Map.of("text", title + ". " + content);
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> sentimentRes = webClient.post()
+                            .uri(sentimentServiceUrl)
+                            .bodyValue(sentimentReq)
+                            .retrieve()
+                            .bodyToMono(Map.class)
+                            .block();
+                    sentimentLabel = sentimentRes != null ? String.valueOf(sentimentRes.getOrDefault("label", "neutral")) : sentimentLabel;
+                    if (sentimentRes != null && sentimentRes.get("score") != null) {
+                        try { sentimentScore = Double.valueOf(sentimentRes.get("score").toString()); } catch (Exception ignored) {}
+                    }
+                }
 
                 NewsArticle article = new NewsArticle();
                 article.setTitle(title);
@@ -173,17 +179,25 @@ public class NewsService {
                     publishedAt = LocalDateTime.now();
                 }
 
-                Map<String, String> sentimentReq = Map.of("text", title + ". " + content);
-                @SuppressWarnings("unchecked")
-                Map<String, Object> sentimentRes = webClient.post()
-                        .uri(sentimentServiceUrl)
-                        .bodyValue(sentimentReq)
-                        .retrieve()
-                        .bodyToMono(Map.class)
-                        .block();
-                String sentimentLabel = sentimentRes != null ? String.valueOf(sentimentRes.getOrDefault("label", "neutral")) : "neutral";
-                Double sentimentScore = sentimentRes != null && sentimentRes.get("score") != null
-                        ? Double.valueOf(sentimentRes.get("score").toString()) : 0.0;
+                String sentimentLabel = String.valueOf(item.getOrDefault("sentiment_label", "neutral"));
+                Double sentimentScore = 0.0;
+                Object scoreObj = item.get("sentiment_score");
+                if (scoreObj != null) {
+                    try { sentimentScore = Double.valueOf(scoreObj.toString()); } catch (Exception ignored) {}
+                } else {
+                    Map<String, String> sentimentReq = Map.of("text", title + ". " + content);
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> sentimentRes = webClient.post()
+                            .uri(sentimentServiceUrl)
+                            .bodyValue(sentimentReq)
+                            .retrieve()
+                            .bodyToMono(Map.class)
+                            .block();
+                    sentimentLabel = sentimentRes != null ? String.valueOf(sentimentRes.getOrDefault("label", "neutral")) : sentimentLabel;
+                    if (sentimentRes != null && sentimentRes.get("score") != null) {
+                        try { sentimentScore = Double.valueOf(sentimentRes.get("score").toString()); } catch (Exception ignored) {}
+                    }
+                }
 
                 NewsArticle article = new NewsArticle();
                 article.setTitle(title);
